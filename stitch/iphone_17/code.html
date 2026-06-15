@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ChatGen Studio - 视频编辑器</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for dialogue timeline */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #dce2f3; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #c7c4d8; }
+        
+        /* iPhone Bezel Styling */
+        .iphone-x {
+            position: relative;
+            width: 375px;
+            height: 812px;
+            background: #000;
+            border-radius: 40px;
+            box-shadow: 0 0 0 11px #1f1f1f, 0 0 0 13px #191919, 0 20px 40px rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
+        .iphone-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 210px;
+            height: 30px;
+            background: #1f1f1f;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            z-index: 50;
+        }
+        
+        /* WeChat specific bubbles */
+        .wechat-bubble-me {
+            position: relative;
+            background-color: #07C160;
+            color: white;
+            border-radius: 4px;
+        }
+        .wechat-bubble-me::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: 12px;
+            width: 0;
+            height: 0;
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+            border-left: 6px solid #07C160;
+        }
+        .wechat-bubble-partner {
+            position: relative;
+            background-color: white;
+            color: black;
+            border: 1px solid #E5E7EB;
+            border-radius: 4px;
+        }
+        .wechat-bubble-partner::after {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 12px;
+            width: 0;
+            height: 0;
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+            border-right: 6px solid white;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#777587",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "inverse-primary": "#c3c0ff",
+                        "background": "#f9f9ff",
+                        "surface-container-high": "#e2e8f8",
+                        "on-tertiary-container": "#ffd2be",
+                        "on-tertiary-fixed": "#351000",
+                        "secondary-container": "#66ff95",
+                        "on-primary-fixed": "#0f0069",
+                        "secondary-fixed": "#66ff95",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#dce2f3",
+                        "tertiary-fixed": "#ffdbcc",
+                        "surface-container": "#e7eefe",
+                        "tertiary": "#7e3000",
+                        "on-primary-container": "#dad7ff",
+                        "on-secondary-container": "#007437",
+                        "on-surface-variant": "#464555",
+                        "surface-dim": "#d3daea",
+                        "on-surface": "#151c27",
+                        "inverse-on-surface": "#ebf1ff",
+                        "on-error": "#ffffff",
+                        "surface-bright": "#f9f9ff",
+                        "outline-variant": "#c7c4d8",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#4f46e5",
+                        "surface-container-highest": "#dce2f3",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#45e17c",
+                        "on-tertiary-fixed-variant": "#7b2f00",
+                        "surface": "#f9f9ff",
+                        "surface-tint": "#4d44e3",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#005225",
+                        "on-background": "#151c27",
+                        "inverse-surface": "#2a313d",
+                        "primary-fixed": "#e2dfff",
+                        "on-primary": "#ffffff",
+                        "secondary": "#006d33",
+                        "surface-container-low": "#f0f3ff",
+                        "primary": "#3525cd",
+                        "tertiary-container": "#a44100",
+                        "on-secondary-fixed": "#00210b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "280px",
+                        "stack-md": "1rem",
+                        "stack-lg": "2rem",
+                        "inspector-width": "320px",
+                        "gutter": "1.5rem",
+                        "container-max": "1440px",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "chat-text": ["system-ui"],
+                        "title-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"]
+                    },
+                    "fontSize": {
+                        "chat-text": ["16px", {"lineHeight": "22px", "fontWeight": "400"}],
+                        "title-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface h-screen overflow-hidden flex flex-col">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-gutter h-16 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-8">
+<span class="font-headline-md text-headline-md font-bold text-primary">ChatGen Studio</span>
+<nav class="hidden md:flex gap-6">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">项目</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">模板</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">素材</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant cursor-pointer active:opacity-80">dark_mode</button>
+<button class="material-symbols-outlined text-on-surface-variant cursor-pointer active:opacity-80">notifications</button>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-highest">
+<img alt="User profile avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjk_w6VE8VOsuhN20r84RJFwzy32viELHhYer0LAAoMM4syfJz0V4TUaotkhzVdMyI6jS57uYbVmfegqMy7QwCZkMikX0vHwUQMA2LppFl3GtO6XN6_JSsh_H6cHf2LCtc5YWuVIcwZ3cn_uEBdiLpbpiVFfo7iGqTR7OSE361eSAMXKLuQNbuZs9Mh_S7PBcN4TGCj3mA57PQqUfvm9z5xDP4j3-qWCC9PsKjIwRMa-HlfIPBBU6totmAsrsp67uBPaH9Xod8NDne"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-sidebar-width flex flex-col p-4 bg-surface-container-low border-r border-outline-variant hidden lg:flex">
+<div class="flex items-center gap-3 px-4 py-3 mb-6">
+<div class="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-white">
+<span class="material-symbols-outlined">movie_edit</span>
+</div>
+<div>
+<h3 class="font-title-sm text-title-sm font-bold text-on-surface">新视频项目</h3>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">草稿 - 2分钟前</p>
+</div>
+</div>
+<div class="space-y-1">
+<div class="bg-primary-container text-on-primary-container flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer">
+<span class="material-symbols-outlined">edit_note</span>
+<span class="font-label-caps text-label-caps">编辑器</span>
+</div>
+<div class="text-on-surface-variant hover:bg-surface-variant flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all">
+<span class="material-symbols-outlined">auto_stories</span>
+<span class="font-label-caps text-label-caps">脚本编排</span>
+</div>
+<div class="text-on-surface-variant hover:bg-surface-variant flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-caps text-label-caps">角色管理</span>
+</div>
+<div class="text-on-surface-variant hover:bg-surface-variant flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="font-label-caps text-label-caps">媒体库</span>
+</div>
+<div class="text-on-surface-variant hover:bg-surface-variant flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-caps text-label-caps">设置</span>
+</div>
+</div>
+<div class="mt-auto pt-6 border-t border-outline-variant">
+<button class="w-full py-3 px-4 bg-primary text-white rounded-xl font-label-caps text-label-caps mb-4">升级到专业版</button>
+<div class="text-on-surface-variant hover:bg-surface-variant flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all">
+<span class="material-symbols-outlined">help_outline</span>
+<span class="font-label-caps text-label-caps">帮助中心</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Area: 2-Column Split View -->
+<main class="flex-1 mt-16 lg:ml-sidebar-width flex overflow-hidden">
+<!-- Left Column: Script Editor -->
+<section class="flex-1 flex flex-col bg-white border-r border-outline-variant overflow-hidden">
+<!-- Video Config Section -->
+<div class="p-6 border-b border-outline-variant bg-surface-container-low">
+<h2 class="font-title-sm text-title-sm mb-4">视频配置</h2>
+<div class="grid grid-cols-2 gap-4">
+<div class="col-span-2">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1">项目标题</label>
+<input class="w-full bg-white border border-outline-variant rounded-lg px-4 py-2 font-body-sm focus:ring-2 focus:ring-primary outline-none" type="text" value="新视频项目 - Elena 交互"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1">分辨率</label>
+<select class="w-full bg-white border border-outline-variant rounded-lg px-4 py-2 font-body-sm outline-none">
+<option>1080P 全高清</option>
+<option selected="">4K 高清</option>
+</select>
+</div>
+<div class="flex items-center justify-between bg-white border border-outline-variant rounded-lg px-4 py-2">
+<span class="font-body-sm">60 FPS 流畅</span>
+<button class="w-10 h-6 bg-primary rounded-full relative p-1 transition-colors">
+<div class="w-4 h-4 bg-white rounded-full ml-auto"></div>
+</button>
+</div>
+<div class="col-span-2">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1">背景音乐 (BGM)</label>
+<div class="w-full border-2 border-dashed border-outline-variant rounded-xl p-4 flex flex-col items-center justify-center hover:bg-surface-container transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-primary mb-2 group-hover:scale-110 transition-transform">cloud_upload</span>
+<span class="font-body-sm text-on-surface-variant">点击上传或拖拽 .mp3 / .wav 文件</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Dialogue Timeline -->
+<div class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-background">
+<div class="flex items-center justify-between">
+<h2 class="font-title-sm text-title-sm">对话时间轴</h2>
+<button class="text-primary font-label-caps text-label-caps flex items-center gap-1 hover:underline">
+<span class="material-symbols-outlined text-sm">add_circle</span> 添加区块
+                </button>
+</div>
+<!-- Block 1: Elena (Text) -->
+<div class="bg-white border-2 border-primary rounded-xl p-4 shadow-sm relative group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-xl"></div>
+<div class="flex items-start gap-4">
+<div class="mt-2 cursor-move text-outline-variant hover:text-outline">
+<span class="material-symbols-outlined">drag_indicator</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between mb-3">
+<div class="flex rounded-lg overflow-hidden border border-outline-variant">
+<button class="px-3 py-1 font-label-caps text-label-caps bg-surface-variant text-on-surface-variant">我</button>
+<button class="px-3 py-1 font-label-caps text-label-caps bg-primary text-white">对方</button>
+</div>
+<div class="flex gap-1">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-variant transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">content_copy</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-error-container hover:text-error transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+<div class="flex gap-2 mb-3">
+<button class="px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-caps text-[10px]">文本</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-[10px]">图片</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-[10px]">语音</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-[10px]">红包</button>
+</div>
+<textarea class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-3 font-chat-text text-chat-text outline-none focus:ring-1 focus:ring-primary h-20 resize-none">你看到我刚才发的项目素材了吗？关于品牌设计的，让我知道你的想法。</textarea>
+</div>
+</div>
+</div>
+<!-- Block 2: Me (Red Packet) -->
+<div class="bg-white border border-outline-variant rounded-xl p-4 shadow-sm relative group hover:border-outline transition-colors">
+<div class="flex items-start gap-4">
+<div class="mt-2 cursor-move text-outline-variant hover:text-outline">
+<span class="material-symbols-outlined">drag_indicator</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between mb-3">
+<div class="flex rounded-lg overflow-hidden border border-outline-variant">
+<button class="px-3 py-1 font-label-caps text-label-caps bg-primary text-white">我</button>
+<button class="px-3 py-1 font-label-caps text-label-caps bg-surface-variant text-on-surface-variant">对方</button>
+</div>
+<div class="flex gap-1">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-variant transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">content_copy</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-error-container hover:text-error transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+<div class="flex gap-2 mb-3">
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-[10px]">文本</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-[10px]">图片</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-[10px]">语音</button>
+<button class="px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-caps text-[10px]">红包</button>
+</div>
+<div class="flex items-center gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
+<div class="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center text-white text-2xl font-bold">¥</div>
+<div>
+<p class="font-title-sm text-red-700">恭喜发财，大吉大利</p>
+<p class="text-xs text-red-500">微信支付</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Block 3: Pat-and-Pat -->
+<div class="bg-white border border-outline-variant border-dashed rounded-xl p-3 flex items-center justify-center gap-3 hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-outline-variant">back_hand</span>
+<span class="font-body-sm text-on-surface-variant italic">“我” 拍了拍 “Elena”</span>
+</div>
+</div>
+<!-- Bottom Action Bar -->
+<div class="p-6 border-t border-outline-variant bg-surface flex gap-4">
+<button class="flex-1 py-4 border-2 border-primary text-primary font-bold rounded-xl hover:bg-primary-fixed transition-colors">生成带水印预览</button>
+<button class="flex-1 py-4 bg-primary-container text-white font-bold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">download</span> 下载超清 MP4
+            </button>
+</div>
+</section>
+<!-- Right Column: Phone Simulator -->
+<section class="w-inspector-width lg:w-[500px] bg-surface flex items-center justify-center p-8 overflow-y-auto">
+<div class="iphone-x" style="position: relative; width: 375px; height: 812px; background: #000; border-radius: 55px; box-shadow: 0 0 0 6px #1f1f1f, 0 0 0 8px #121212, 0 20px 40px rgba(0,0,0,0.4); overflow: hidden;">
+<div class="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full z-50 flex items-center justify-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-[#1a1a1a]"></div><div class="w-1 h-1 rounded-full bg-[#1a1a1a]"></div></div>
+<!-- WeChat UI -->
+<div class="w-full h-full bg-[#EDEDED] flex flex-col">
+<!-- WeChat Header -->
+<div class="pb-3 px-4 flex items-center justify-between border-b border-[#D1D1D1] pt-16">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-xl">arrow_back_ios</span>
+<h4 class="font-bold text-[17px]">Elena</h4>
+</div>
+<span class="material-symbols-outlined">more_horiz</span>
+</div>
+<!-- Chat Feed -->
+<div class="flex-1 overflow-y-auto p-4 space-y-6">
+<div class="flex justify-center">
+<span class="bg-[#DADADA] text-white text-[12px] px-2 py-0.5 rounded-md">星期一 10:24 AM</span>
+</div>
+<!-- Elena Message -->
+<div class="flex items-start gap-3">
+<div class="w-10 h-10 rounded bg-white overflow-hidden shadow-sm">
+<img alt="Elena profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfFvip0LJMmXNgXRnr1kzJoIo6Ja7U7XwQRFiIH4jJUA2VfnA7jDkZjY5UOccFR9vye4V_e6zPnxgaB6YV5DuZ3mmuNOHbMpOwb_z8ixd3b_tE0umgH3PjJrlamUbobkP4VVy7C_O8JNSsEZxPBE8d2nXSmAsgJoa4GrpnYkUzMEncKTEvyhiuEH-EA_DSSCh-_0kSi3nEyxOvZcjRk6Ho7dOfSPROPPwQ51BshFVPMbQN6qDaMftZsMxo6dNGydG5wQZU6c3Vfj-E"/>
+</div>
+<div class="wechat-bubble-partner p-2 max-w-[70%] font-chat-text text-chat-text">
+                            你看到我刚才发的项目素材了吗？关于品牌设计的，让我知道你的想法。
+                        </div>
+</div>
+<!-- Red Packet Message (Me) -->
+<div class="flex items-start justify-end gap-3">
+<div class="max-w-[70%]">
+<div class="bg-[#F44336] rounded-t-lg p-3 text-white">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-[#FFD700] rounded-lg flex items-center justify-center text-[#F44336] text-xl font-bold">¥</div>
+<div>
+<p class="font-medium text-[15px]">恭喜发财，大吉大利</p>
+</div>
+</div>
+</div>
+<div class="bg-white px-3 py-1 rounded-b-lg text-[10px] text-on-surface-variant flex items-center justify-between">
+<span>微信支付</span>
+<span>已领取</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded bg-white overflow-hidden shadow-sm">
+<img alt="User avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9AzP0iGgOFnKBYwctWlihYVepMlniH552hhYnp5f7Qb24d-IyueyHOTc3AVNA0lOXicCieFVye8epf7KrZDOtCZHUYvWYR5Yh4T8_2H9g3HBJ3dAZTFgT8jquZ-wkFsBVN3zDyW7FY_iDEw9O_yUDTxOmu0cGvkq_d8BFxGfDcRnikb0irB3h5t36x7_etz46mKk7Zc11fzsNU5wmf0nuvw4Uash9RHszlp63msy9FxX8vHhfPrFQ3suZvy4_dk31SrXRPJY9R9o3"/>
+</div>
+</div>
+<!-- Pat Notification -->
+<div class="flex justify-center">
+<span class="text-[#888888] text-[12px]">“我” 拍了拍 “Elena”</span>
+</div>
+<!-- Typing Indicator -->
+<div class="flex items-start gap-3 animate-pulse">
+<div class="w-10 h-10 rounded bg-white opacity-50"></div>
+<div class="bg-white rounded-lg px-4 py-2 flex gap-1">
+<div class="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+<div class="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+<div class="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- WeChat Footer Input -->
+<div class="p-3 pb-8 bg-[#F7F7F7] border-t border-[#D1D1D1] flex items-center gap-3">
+<span class="material-symbols-outlined text-[28px] text-[#555]">mic</span>
+<div class="flex-1 bg-white h-10 rounded-md border border-[#E5E5E5]"></div>
+<span class="material-symbols-outlined text-[28px] text-[#555]">mood</span>
+<span class="material-symbols-outlined text-[28px] text-[#555]">add_circle</span>
+</div>
+</div>
+<!-- Bottom Bar (iOS) -->
+<div class="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-black rounded-full opacity-20"></div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="flex justify-between items-center px-gutter py-4 w-full bg-surface border-t border-outline-variant relative z-10">
+<p class="font-body-sm text-body-sm text-on-surface-variant">© 2024 ChatGen Studio. 版权所有.</p>
+<div class="flex gap-6">
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">隐私政策</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">服务条款</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">联系支持</a>
+</div>
+</footer>
+<script>
+    // Simple Interaction logic for demo
+    document.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            btn.classList.add('scale-95');
+            setTimeout(() => btn.classList.remove('scale-95'), 100);
+        });
+    });
+</script>
+</body></html>
