@@ -11,6 +11,7 @@ export interface DialogueScript {
 
 export type MessageType = 'text' | 'image' | 'voice' | 'red_packet' | 'pat';
 export type Sender = 'me' | 'target';
+export type PhoneModel = 'standard' | 'iphone17pro';
 export type RedPacketSkin = 'classic_red' | 'love_pink' | 'gold_luxury';
 
 export interface MessageBlock {
