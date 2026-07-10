@@ -1,122 +1,60 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { sampleScript } from './data/sampleScript';
+import { TopNav } from './components/TopNav';
+import { SideNav } from './components/SideNav';
+import { ConfigPanel } from './components/ConfigPanel';
+import { TimelineEditor } from './components/TimelineEditor';
+import { PhonePreview } from './components/PhonePreview';
 
 function App() {
-  const [count, setCount] = useState(0)
+  // 本版用静态脚本驱动预览；后续接入编辑状态时改为 useState 即可。
+  const script = sampleScript;
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      <TopNav />
+      <SideNav />
 
-      <div className="ticks"></div>
+      {/* 主区：左编辑 / 右预览 两栏 */}
+      <main className="flex-1 mt-16 lg:ml-sidebar-width flex overflow-hidden">
+        {/* 左栏：脚本编辑 */}
+        <section className="flex-1 flex flex-col bg-white border-r border-outline-variant overflow-hidden">
+          <ConfigPanel />
+          <TimelineEditor timeline={script.timeline} />
+          {/* 底部操作条 */}
+          <div className="p-6 border-t border-outline-variant bg-surface flex gap-4">
+            <button className="flex-1 py-4 border-2 border-primary text-primary font-bold rounded-xl hover:bg-primary-fixed transition-colors">
+              生成带水印预览
+            </button>
+            <button className="flex-1 py-4 bg-primary-container text-white font-bold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2">
+              <span className="material-symbols-outlined">download</span>
+              下载超清 MP4
+            </button>
+          </div>
+        </section>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {/* 右栏：手机模拟预览 */}
+        <PhonePreview script={script} />
+      </main>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+      {/* 底栏 */}
+      <footer className="flex justify-between items-center px-gutter py-4 w-full bg-surface border-t border-outline-variant relative z-10">
+        <p className="font-body-sm text-body-sm text-on-surface-variant">
+          © 2024 ChatGen Studio. 版权所有.
+        </p>
+        <div className="flex gap-6">
+          <a className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
+            隐私政策
+          </a>
+          <a className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
+            服务条款
+          </a>
+          <a className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
+            联系支持
+          </a>
+        </div>
+      </footer>
     </>
-  )
+  );
 }
 
-export default App
+export default App;

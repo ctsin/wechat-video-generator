@@ -1,113 +1,221 @@
 @import "tailwindcss";
 
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+/* ============================================================
+   主题：翻译自 stitch/_1/code.html 的 tailwind.config
+   Tailwind v4 使用 CSS 变量令牌（@theme），而非 JS config。
+   ============================================================ */
+@theme {
+  /* ---- Colors ---- */
+  --color-outline: #777587;
+  --color-primary-fixed-dim: #c3c0ff;
+  --color-inverse-primary: #c3c0ff;
+  --color-background: #f9f9ff;
+  --color-surface-container-high: #e2e8f8;
+  --color-on-tertiary-container: #ffd2be;
+  --color-on-tertiary-fixed: #351000;
+  --color-secondary-container: #66ff95;
+  --color-on-primary-fixed: #0f0069;
+  --color-secondary-fixed: #66ff95;
+  --color-tertiary-fixed-dim: #ffb695;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-variant: #dce2f3;
+  --color-tertiary-fixed: #ffdbcc;
+  --color-surface-container: #e7eefe;
+  --color-tertiary: #7e3000;
+  --color-on-primary-container: #dad7ff;
+  --color-on-secondary-container: #007437;
+  --color-on-surface-variant: #464555;
+  --color-surface-dim: #d3daea;
+  --color-on-surface: #151c27;
+  --color-inverse-on-surface: #ebf1ff;
+  --color-on-error: #ffffff;
+  --color-surface-bright: #f9f9ff;
+  --color-outline-variant: #c7c4d8;
+  --color-on-tertiary: #ffffff;
+  --color-primary-container: #4f46e5;
+  --color-surface-container-highest: #dce2f3;
+  --color-on-error-container: #93000a;
+  --color-error: #ba1a1a;
+  --color-secondary-fixed-dim: #45e17c;
+  --color-on-tertiary-fixed-variant: #7b2f00;
+  --color-surface: #f9f9ff;
+  --color-surface-tint: #4d44e3;
+  --color-error-container: #ffdad6;
+  --color-on-primary-fixed-variant: #3323cc;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-fixed-variant: #005225;
+  --color-on-background: #151c27;
+  --color-inverse-surface: #2a313d;
+  --color-primary-fixed: #e2dfff;
+  --color-on-primary: #ffffff;
+  --color-secondary: #006d33;
+  --color-surface-container-low: #f0f3ff;
+  --color-primary: #3525cd;
+  --color-tertiary-container: #a44100;
+  --color-on-secondary-fixed: #00210b;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* ---- Border radius（照 stitch 覆写）---- */
+  --radius: 0.125rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+  --radius-full: 0.75rem;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* ---- Spacing（自定义命名尺寸）---- */
+  --spacing-sidebar-width: 280px;
+  --spacing-inspector-width: 320px;
+  --spacing-container-max: 1440px;
+  --spacing-gutter: 1.5rem;
+  --spacing-stack-sm: 0.5rem;
+  --spacing-stack-md: 1rem;
+  --spacing-stack-lg: 2rem;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  /* ---- Font families ---- */
+  --font-chat-text: system-ui, sans-serif;
+  --font-title-sm: "Inter", sans-serif;
+  --font-body-md: "Inter", sans-serif;
+  --font-headline-md: "Inter", sans-serif;
+  --font-display-lg: "Inter", sans-serif;
+  --font-body-sm: "Inter", sans-serif;
+  --font-label-caps: "Inter", sans-serif;
+
+  /* ---- Font sizes（含 line-height / weight / tracking）---- */
+  --text-chat-text: 16px;
+  --text-chat-text--line-height: 22px;
+  --text-chat-text--font-weight: 400;
+
+  --text-title-sm: 18px;
+  --text-title-sm--line-height: 28px;
+  --text-title-sm--font-weight: 600;
+
+  --text-body-md: 16px;
+  --text-body-md--line-height: 24px;
+  --text-body-md--font-weight: 400;
+
+  --text-headline-md: 24px;
+  --text-headline-md--line-height: 32px;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 600;
+
+  --text-display-lg: 32px;
+  --text-display-lg--line-height: 40px;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-lg--font-weight: 700;
+
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 20px;
+  --text-body-sm--font-weight: 400;
+
+  --text-label-caps: 12px;
+  --text-label-caps--line-height: 16px;
+  --text-label-caps--letter-spacing: 0.05em;
+  --text-label-caps--font-weight: 600;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+/* ============================================================
+   Base
+   ============================================================ */
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
+  overflow: hidden;
 }
 
-body {
-  margin: 0;
+/* Google Material Symbols Outlined */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+/* ============================================================
+   组件样式（迁移自 stitch <style>）
+   ============================================================ */
+
+/* 对话时间轴自定义滚动条 */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #dce2f3;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #c7c4d8;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+/* iPhone 边框 */
+.iphone-x {
+  position: relative;
+  width: 375px;
+  height: 812px;
+  background: #000;
+  border-radius: 40px;
+  box-shadow: 0 0 0 11px #1f1f1f, 0 0 0 13px #191919, 0 20px 40px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+.iphone-notch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 210px;
+  height: 30px;
+  background: #1f1f1f;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+  z-index: 50;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
+/* 微信气泡（我 / 对方）含尖角 */
+.wechat-bubble-me {
+  position: relative;
+  background-color: #07c160;
+  color: white;
   border-radius: 4px;
-  color: var(--text-h);
 }
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+.wechat-bubble-me::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  top: 12px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 6px solid #07c160;
+}
+.wechat-bubble-partner {
+  position: relative;
+  background-color: white;
+  color: black;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+.wechat-bubble-partner::after {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 12px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 6px solid white;
 }
