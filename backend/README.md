@@ -9,7 +9,7 @@ Express + TypeScript orchestration server. Implements every API the current fron
 - **Validation**: `zod` schemas mirrored against `frontend/src/types.ts` and `AGENTS.md §2`
 - **Auth**: stateless HS256 JWT via `jose`, claims round-tripped against a JSON-file user table
 - **Persistence**: JSON file at `db.json` (atomic temp-write + rename)
-- **AWS Lambda render**: dynamically imported `@remotion/lambda`, gated behind `REMOTION_LAMBDA_ENABLED=1` + bucket + function env. Without it the render endpoints write a placeholder MP4 locally so the front-end loop is exercisable without AWS credentials.
+- **AWS Lambda render**: `@remotion/lambda` (resolved from the frontend package so versions match the composition), gated behind `REMOTION_LAMBDA_ENABLED=1` + bucket + function env. Without it the render endpoints render locally via `@remotion/renderer` into `static/renders/<jobId>.mp4` — a real, playable MP4 so the front-end loop works without AWS credentials.
 
 ## Layout
 
@@ -77,10 +77,24 @@ Frontend `vite.config.ts` already proxies `/api` and `/static` to `http://localh
 
 ## Production / AWS
 
-1. Fill out `REMOTION_LAMBDA_ENABLED=1`, `REMOTION_BUCKET_NAME`, `REMOTION_FUNCTION_NAME`, `REMOTION_AWS_REGION` in `.env`. The render service will then call `@remotion/lambda` to bundle `frontend/src/remotion/index.ts` (the composition entry), `deploySite` it, submit `renderMediaOnLambda`, poll `getRenderProgress(skipLambdaInvocation: true)` and `downloadMedia` into `static/renders/<jobId>.mp4`.
-2. The dev `/api/auth/upgrade` shortcut should be removed; the real flow goes `/api/pay/orders → user scans QR → provider POSTs /api/pay/callback → user auto-upgraded + JWT re-issued`.
-3. Swap the JSON-file DB for SQLite / Postgres; the helpers in `lib/db.ts` are the only call-sites.
-4. Replace HS256 with RS256 + KMS-managed key.
+1. **Provision + verify in one step.** With AWS credentials exported
+   (`REMOTION_AWS_ACCESS_KEY_ID` + `REMOTION_AWS_SECRET_ACCESS_KEY`, or an
+   `AWS_PROFILE`), run `cd frontend && npm run verify:render`. It creates the S3
+   bucket, deploys a version-compatible Lambda function, bundles + uploads the
+   `WeChatChat` site, runs a short render, downloads it, and prints the exact
+   `REMOTION_BUCKET_NAME` / `REMOTION_FUNCTION_NAME` to copy into `backend/.env`.
+2. Fill `backend/.env`: `REMOTION_LAMBDA_ENABLED=1`, `REMOTION_AWS_REGION`,
+   `REMOTION_BUCKET_NAME`, `REMOTION_FUNCTION_NAME`, and the AWS credentials.
+   The backend then deploys the site once per process (or reuses
+   `REMOTION_SERVE_URL` if set), submits `renderMediaOnLambda`, polls
+   `getRenderProgress(skipLambdaInvocation: true)`, and `downloadMedia`s into
+   `static/renders/<jobId>.mp4`.
+3. The dev `/api/auth/upgrade` shortcut should be removed; the real flow goes
+   `/api/pay/orders → user scans QR → provider POSTs /api/pay/callback → user
+   auto-upgraded + JWT re-issued`.
+4. Swap the JSON-file DB for SQLite / Postgres; the helpers in `lib/db.ts` are
+   the only call-sites.
+5. Replace HS256 with RS256 + KMS-managed key.
 
 ## Smoke test recap
 

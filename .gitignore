@@ -141,3 +141,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Remotion auto-downloaded Chromium cache (Headless Shell ~150MB, exceeds
+# GitHub's 100MB file limit — must never be committed).
+.remotion/

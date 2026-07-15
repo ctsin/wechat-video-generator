@@ -1,23 +1,23 @@
 // Render dispatcher.
 //
 // Two paths:
-//   * AWS Lambda (REMOTION_LAMBDA_ENABLED=1 + bucket + function): we
-//     dynamically import @remotion/lambda, deploySite the frontend
-//     composition once per session, then call renderMediaOnLambda and
-//     poll until done.
-//   * Dev mode: we synthesize a tiny placeholder MP4 into
-//     <repo>/backend/static/renders/<jobId>.mp4 so the front-end can
-//     observe the full flow (status polling, download URL) without AWS
-//     credentials.
+//   * AWS Lambda (REMOTION_LAMBDA_ENABLED=1 + bucket + function): resolve
+//     @remotion/lambda from the frontend package, deploy the composition site
+//     once per process (or reuse REMOTION_SERVE_URL), submit
+//     renderMediaOnLambda, poll progress, then download the MP4 to
+//     static/renders/<jobId>.mp4.
+//   * Dev/local mode: render the composition on this machine via
+//     @remotion/renderer into static/renders/<jobId>.mp4 — a real, playable
+//     MP4 with no AWS required.
 //
-// The output MP4 stream is exposed at /static/renders/<id>.mp4 either way.
+// The output MP4 is exposed at /static/renders/<id>.mp4 either way.
 
-import { createWriteStream, promises as fs } from 'node:fs';
+import { promises as fs } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env, remotionLambdaReady } from '../lib/env.js';
 import {
-  getJob,
   publicUrlFor,
   updateJob,
   type RenderJob,
@@ -26,60 +26,140 @@ import type { DialogueScript } from '../types/script.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RENDERS_DIR = path.resolve(__dirname, '../../static/renders');
-
-// Minimal valid MP4 (ftyp + mdat boxes only). 80 bytes.
-// Enough to be a downloadable resource; not a playable video. The
-// dev-mode output is purely so the front-end can verify the contract.
-const PLACEHOLDER_MP4 = Buffer.from([
-  0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x70, 0x34, 0x32,
-  0x00, 0x00, 0x00, 0x00, 0x6d, 0x70, 0x34, 0x32, 0x69, 0x73, 0x6f, 0x6d,
-  0x00, 0x00, 0x00, 0x08, 0x66, 0x72, 0x65, 0x65, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x10, 0x6d, 0x64, 0x61, 0x74,
-]);
+// The Remotion composition + its render toolchain live in the frontend
+// package. We resolve @remotion/bundler and @remotion/renderer from there
+// (via a require rooted in frontend/) so their versions always match the
+// `remotion` version the composition is built against — no second install.
+const FRONTEND_DIR = path.resolve(__dirname, '../../../frontend');
+const REMOTION_ENTRY = path.join(FRONTEND_DIR, 'src/remotion/index.ts');
+const COMPOSITION_ID = 'WeChatChat';
 
 async function ensureRendersDir(): Promise<void> {
   await fs.mkdir(RENDERS_DIR, { recursive: true });
 }
 
-async function writePlaceholder(jobId: string): Promise<void> {
-  await ensureRendersDir();
-  await fs.writeFile(path.join(RENDERS_DIR, `${jobId}.mp4`), PLACEHOLDER_MP4);
+// Resolve the Remotion render toolchain from the frontend package so the
+// bundler/renderer versions line up with the composition's `remotion`.
+const requireFromFrontend = createRequire(path.join(FRONTEND_DIR, 'noop.js'));
+
+// Bundling the composition takes a few seconds; do it once per process and
+// share the resulting serveUrl across every local render job.
+let bundlePromise: Promise<string> | null = null;
+function getServeUrl(): Promise<string> {
+  if (!bundlePromise) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { bundle }: any = requireFromFrontend('@remotion/bundler');
+    const pending: Promise<string> = bundle({ entryPoint: REMOTION_ENTRY }).catch(
+      (err: unknown) => {
+        // Reset so a later job can retry a failed bundle.
+        if (bundlePromise === pending) bundlePromise = null;
+        throw err;
+      },
+    );
+    bundlePromise = pending;
+  }
+  return bundlePromise;
 }
 
-// Dynamic imports so we don't pull @remotion/lambda into the bundle when the
-// dev backend runs without AWS.
+// Dev/local path: render the WeChatChat composition on this machine via
+// @remotion/renderer (headless Chromium + the native compositor), writing a
+// real, playable H.264 MP4 into static/renders/<jobId>.mp4.
+async function renderLocally(
+  job: RenderJob,
+  script: DialogueScript,
+): Promise<void> {
+  await ensureRendersDir();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { selectComposition, renderMedia }: any =
+    requireFromFrontend('@remotion/renderer');
+
+  updateJob(job.id, { status: 'rendering', progress: 0.05, compositionId: COMPOSITION_ID });
+
+  const serveUrl = await getServeUrl();
+  const inputProps = { script };
+  const composition = await selectComposition({
+    serveUrl,
+    id: COMPOSITION_ID,
+    inputProps,
+  });
+
+  updateJob(job.id, { progress: 0.1 });
+
+  await renderMedia({
+    serveUrl,
+    composition,
+    codec: 'h264',
+    inputProps,
+    outputLocation: path.join(RENDERS_DIR, `${job.id}.mp4`),
+    onProgress: ({ progress }: { progress: number }) => {
+      // renderMedia reports 0..1 over encode; map into the 0.1..1 band.
+      updateJob(job.id, { progress: 0.1 + progress * 0.9 });
+    },
+  });
+}
+
+// Deploying the composition site to S3 is slow + costs a PUT storm; do it once
+// per process (or skip entirely when the operator pins REMOTION_SERVE_URL to an
+// already-deployed site) and share the serveUrl across every Lambda job.
+let lambdaServeUrlPromise: Promise<string> | null = null;
+function getLambdaServeUrl(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  lambda: any,
+  region: string,
+  bucketName: string,
+): Promise<string> {
+  if (env.REMOTION_SERVE_URL) return Promise.resolve(env.REMOTION_SERVE_URL);
+  if (!lambdaServeUrlPromise) {
+    const pending: Promise<string> = lambda
+      .deploySite({
+        bucketName,
+        region,
+        entryPoint: REMOTION_ENTRY,
+        siteName: env.REMOTION_SITE_NAME,
+      })
+      .then((r: { serveUrl: string }) => r.serveUrl)
+      .catch((err: unknown) => {
+        // Reset so a later job can retry a failed deploy.
+        if (lambdaServeUrlPromise === pending) lambdaServeUrlPromise = null;
+        throw err;
+      });
+    lambdaServeUrlPromise = pending;
+  }
+  return lambdaServeUrlPromise;
+}
+
+// Production path: render the WeChatChat composition on AWS Lambda and download
+// the finished MP4 into static/renders/<jobId>.mp4. Requires
+// REMOTION_LAMBDA_ENABLED=1 + bucket + function + AWS credentials in the env.
 async function renderOnLambda(
   job: RenderJob,
   script: DialogueScript,
-  scriptId: string,
 ): Promise<void> {
-  // The package may not be installed in dev — the dynamic import only runs
-  // when REMOTION_LAMBDA_ENABLED=1 + bucket + function are all configured.
-  // @ts-ignore -- optional dep
-  const lambda: any = await import('@remotion/lambda');
+  // Resolve from the frontend package (same as the local renderer) so the
+  // @remotion/lambda version matches the composition's `remotion` — the
+  // backend does not install @remotion/* itself.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lambda: any = requireFromFrontend('@remotion/lambda');
   const region = env.REMOTION_AWS_REGION;
   const bucketName = env.REMOTION_BUCKET_NAME!;
   const functionName = env.REMOTION_FUNCTION_NAME!;
 
-  const { serveUrl } = await lambda.deploySite({
-    bucketName,
-    region,
-    entryPoint: path.resolve(__dirname, '../../../frontend/src/remotion/index.ts'),
-    siteName: `wechat-${scriptId}`,
-  });
-
   updateJob(job.id, {
     status: 'rendering',
-    progress: 0.05,
-    compositionId: 'WeChatChat',
+    progress: 0.03,
+    compositionId: COMPOSITION_ID,
   });
+
+  const serveUrl = await getLambdaServeUrl(lambda, region, bucketName);
+
+  updateJob(job.id, { progress: 0.05 });
 
   const { renderId } = await lambda.renderMediaOnLambda({
     region,
     bucketName,
     functionName,
     serveUrl,
-    composition: 'WeChatChat',
+    composition: COMPOSITION_ID,
     inputProps: { script },
     codec: 'h264',
     imageFormat: 'jpeg',
@@ -108,12 +188,14 @@ async function renderOnLambda(
     await new Promise((r) => setTimeout(r, 3000));
   }
 
-  const stream = await lambda.downloadMedia({ renderId, bucketName, region });
+  // downloadMedia (Remotion 4.x) writes to outPath and resolves to
+  // { outputPath, sizeInBytes } — it does not return a stream.
   await ensureRendersDir();
-  await new Promise<void>((resolve, reject) => {
-    const out = createWriteStream(path.join(RENDERS_DIR, `${job.id}.mp4`));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (stream as any).pipe(out).on('finish', () => resolve()).on('error', reject);
+  await lambda.downloadMedia({
+    renderId,
+    bucketName,
+    region,
+    outPath: path.join(RENDERS_DIR, `${job.id}.mp4`),
   });
 
   updateJob(job.id, {
@@ -133,16 +215,11 @@ export function startRender(
   void (async () => {
     try {
       if (remotionLambdaReady) {
-        await renderOnLambda(job, script, job.id);
+        await renderOnLambda(job, script);
       } else {
-        // Dev path: simulate progress + write a placeholder MP4 so /static serves it.
-        for (let step = 1; step <= 5; step++) {
-          await new Promise((r) => setTimeout(r, 250));
-          const fresh = getJob(job.id);
-          if (!fresh) return;
-          updateJob(job.id, { status: 'rendering', progress: step / 6 });
-        }
-        await writePlaceholder(job.id);
+        // Dev/local path: really render on this machine so the download is a
+        // playable MP4 (no AWS required).
+        await renderLocally(job, script);
         updateJob(job.id, {
           status: 'done',
           progress: 1,

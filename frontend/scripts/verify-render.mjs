@@ -20,7 +20,6 @@ import {
   deploySite,
   downloadMedia,
 } from '@remotion/lambda';
-import { createWriteStream } from 'node:fs';
 
 const REGION = process.env.REMOTION_AWS_REGION ?? 'us-east-1';
 const SITE_NAME = 'wechat-verify';
@@ -41,19 +40,18 @@ async function main() {
   });
   log(`bucket = ${bucketName}`);
 
-  // 2) Function: prefer reusing the already-deployed one (same spec).
-  //    If absent, deploy a fresh matching function so the test is reproducible.
+  // 2) Function: reuse a version-compatible one if present, else deploy one.
+  //    compatibleOnly:true filters to functions matching the installed
+  //    @remotion version, so we don't hardcode a stale version string.
   log('checking existing functions...');
-  const funcs = await getFunctions({ region: REGION, compatibleOnly: false });
-  const FUNCTION_NAME = `remotion-render-4-0-483-mem2048mb-disk2048mb-120sec`;
-  const haveFunc = funcs.find((f) => f.functionName === FUNCTION_NAME);
+  const funcs = await getFunctions({ region: REGION, compatibleOnly: true });
 
   let functionName;
-  if (haveFunc) {
-    functionName = haveFunc.functionName;
+  if (funcs.length > 0) {
+    functionName = funcs[0].functionName;
     log(`reusing existing function: ${functionName}`);
   } else {
-    log(`deploying fresh function: ${FUNCTION_NAME}`);
+    log('deploying fresh function...');
     const fn = await deployFunction({
       region: REGION,
       timeoutInSeconds: 120,
@@ -63,6 +61,7 @@ async function main() {
       architecture: 'x86_64',
     });
     functionName = fn.functionName;
+    log(`deployed function: ${functionName}`);
   }
 
   // 3+4) deploySite bundles + uploads in one call (internally calls @remotion/bundler).
@@ -129,20 +128,26 @@ async function main() {
     await new Promise((r) => setTimeout(r, 3000));
   }
 
-  // 7) Download.
+  // 7) Download. downloadMedia (Remotion 4.x) writes to outPath and resolves
+  //    to { outputPath, sizeInBytes } — it is not a stream.
   log(`downloading to ${OUT}...`);
-  const stream = await downloadMedia({ renderId, bucketName, region: REGION });
-  await new Promise((resolve, reject) => {
-    stream
-      .pipe(createWriteStream(OUT))
-      .on('finish', resolve)
-      .on('error', reject);
+  const { outputPath, sizeInBytes } = await downloadMedia({
+    renderId,
+    bucketName,
+    region: REGION,
+    outPath: OUT,
   });
 
-  log(`✔ done -> ${OUT}`);
+  log(`✔ done -> ${outputPath} (${sizeInBytes} bytes)`);
   log('inspect with:');
-  log(`  ls -la ${OUT}`);
-  log(`  ffprobe ${OUT}      # if ffmpeg is installed`);
+  log(`  ls -la ${outputPath}`);
+  log(`  ffprobe ${outputPath}      # if ffmpeg is installed`);
+  log('');
+  log('Put these in backend/.env to enable the production render path:');
+  log('  REMOTION_LAMBDA_ENABLED=1');
+  log(`  REMOTION_AWS_REGION=${REGION}`);
+  log(`  REMOTION_BUCKET_NAME=${bucketName}`);
+  log(`  REMOTION_FUNCTION_NAME=${functionName}`);
 }
 
 main().catch((err) => {
