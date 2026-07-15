@@ -4,13 +4,11 @@
 //   * AWS Lambda (REMOTION_LAMBDA_ENABLED=1 + bucket + function): resolve
 //     @remotion/lambda from the frontend package, deploy the composition site
 //     once per process (or reuse REMOTION_SERVE_URL), submit
-//     renderMediaOnLambda, poll progress, then download the MP4 to
-//     static/renders/<jobId>.mp4.
+//     renderMediaOnLambda, poll progress, then hand the S3 public URL of the
+//     finished MP4 back to the client. No local download, no shared disk.
 //   * Dev/local mode: render the composition on this machine via
 //     @remotion/renderer into static/renders/<jobId>.mp4 — a real, playable
-//     MP4 with no AWS required.
-//
-// The output MP4 is exposed at /static/renders/<id>.mp4 either way.
+//     MP4 with no AWS required; served via the /static/renders mount.
 
 import { promises as fs } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -128,9 +126,10 @@ function getLambdaServeUrl(
   return lambdaServeUrlPromise;
 }
 
-// Production path: render the WeChatChat composition on AWS Lambda and download
-// the finished MP4 into static/renders/<jobId>.mp4. Requires
-// REMOTION_LAMBDA_ENABLED=1 + bucket + function + AWS credentials in the env.
+// Production path: render the WeChatChat composition on AWS Lambda. The
+// finished MP4 lives in S3 (the deploySite bucket, with privacy:'public-acl'
+// or the Lambda's default public read) and we hand the S3 URL straight to the
+// client — no local download, no shared disk, no per-instance state.
 async function renderOnLambda(
   job: RenderJob,
   script: DialogueScript,
@@ -169,6 +168,11 @@ async function renderOnLambda(
 
   updateJob(job.id, { remoteRenderId: renderId, progress: 0.1 });
 
+  // The final progress object carries the public S3 URL of the rendered MP4
+  // (p.outputFile / p.postRenderData.outputFile). Capture it instead of
+  // streaming the file down through the backend.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let finalProgress: any = null;
   for (;;) {
     const p = await lambda.getRenderProgress({
       renderId,
@@ -177,6 +181,7 @@ async function renderOnLambda(
       region,
       skipLambdaInvocation: true,
     });
+    finalProgress = p;
     const total = p.renderMetadata?.totalFrames ?? 0;
     const done = p.framesRendered ?? 0;
     const ratio = total > 0 ? Math.min(0.95, 0.1 + (done / total) * 0.85) : 0.5;
@@ -188,20 +193,18 @@ async function renderOnLambda(
     await new Promise((r) => setTimeout(r, 3000));
   }
 
-  // downloadMedia (Remotion 4.x) writes to outPath and resolves to
-  // { outputPath, sizeInBytes } — it does not return a stream.
-  await ensureRendersDir();
-  await lambda.downloadMedia({
-    renderId,
-    bucketName,
-    region,
-    outPath: path.join(RENDERS_DIR, `${job.id}.mp4`),
-  });
+  const outputFile =
+    finalProgress?.outputFile ?? finalProgress?.postRenderData?.outputFile;
+  if (!outputFile) {
+    throw new Error(
+      `lambda render finished but no outputFile was reported (renderId=${renderId})`,
+    );
+  }
 
   updateJob(job.id, {
     status: 'done',
     progress: 1,
-    outputUrl: publicUrlFor(job.id),
+    outputUrl: outputFile,
   });
 }
 

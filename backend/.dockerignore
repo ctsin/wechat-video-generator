@@ -1,0 +1,38 @@
+# Anything that should not be baked into the image (the Dockerfile re-installs
+# node_modules from the lockfiles and rebuilds the source tree).
+
+**/node_modules
+**/dist
+**/.remotion
+**/.vite
+**/.cache
+**/coverage
+**/.next
+**/.turbo
+
+# Per-package build outputs we don't need at runtime.
+backend/dist
+backend/tsconfig.tsbuildinfo
+frontend/dist
+
+# Local-only state. (Uploads + render outputs are recreated on first request
+# via ensureRendersDir and multer; db.json is recreated by lib/db.ts on first
+# write.)
+backend/static/renders/*.mp4
+backend/uploads/bgm/*
+backend/db.json
+backend/db.json.tmp-*
+
+# Secrets / env — supplied by App Runner at runtime, not baked in.
+.env
+.env.*
+!.env.example
+
+# VCS + OS junk.
+**/.git
+**/.DS_Store
+**/Thumbs.db
+
+# Local scratch files (debug logs, etc.).
+*.log
+/tmp
